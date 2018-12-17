@@ -14,8 +14,8 @@ const defaultPrintOptions = {
   displayHeaderFooter: false,
   printBackground: true,
   scale: 1,
-  paperWidth: 8.27, // aka A4
-  paperHeight: 11.69, // aka A4
+  paperWidth: 8.27, 
+  paperHeight: 11.69, 
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -143,7 +143,6 @@ export default async function printUrlToPdf (
     })
 
     log('We think the page has finished loading. Printing PDF.')
-
     const pdf = await Page.printToPDF(printOptions)
     result = pdf.data
   } catch (error) {

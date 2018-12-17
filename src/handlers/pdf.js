@@ -10,16 +10,20 @@ import pdf, { makePrintOptions } from '../chrome/pdf'
 
 export default async function handler (event, context, callback) {
   const queryStringParameters = event.queryStringParameters || {}
-  console.log(` queryStringParameters : ${JSON.stringify(queryStringParameters)}`);
   const {
     url = 'https://github.com/adieuadieu/serverless-chrome',
     ...printParameters
   } = queryStringParameters
-  const printOptions = makePrintOptions(printParameters)
-  let data
 
+  let printOptions = makePrintOptions(printParameters)
+
+  printOptions.landscape = (printParameters.landscape === 'true')
+  printOptions.ignoreInvalidPageRanges = (printParameters.ignoreInvalidPageRanges === 'true')
+  printOptions.printBackground = (printParameters.printBackground === 'true')
+  printOptions.displayHeaderFooter = (printParameters.displayHeaderFooter === 'true')
+
+  let data
   log('Processing PDFification for', url, printOptions)
-  console.log(`Say hello Groot`);
   const startTime = Date.now()
 
   try {
@@ -28,7 +32,6 @@ export default async function handler (event, context, callback) {
     console.error('Error printing pdf for', url, error)
     return callback(error)
   }
-  console.log(typeof data, data);
   log(`Chromium took ${Date.now() - startTime}ms to load URL and render PDF.`)
 
   // TODO: handle cases where the response is > 10MB
