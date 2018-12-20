@@ -60,6 +60,10 @@ functions:
       - http:
           path: pdf
           method: get
+      - http:
+          path: pdf
+          method: post
+
 
   magic:
     description: Custom function for magic purposes

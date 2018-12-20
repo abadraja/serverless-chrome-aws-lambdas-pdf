@@ -21,6 +21,8 @@ const defaultPrintOptions = {
   marginLeft: 0,
   marginRight: 0,
   pageRanges: '',
+  headerTemplate: '<div class=\"page-footer\" style=\"width:100%; text-align:right; font-size:12px;\">Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>',
+  footerTemplate: '<div class=\"page-footer\" style=\"width:100%; text-align:right; font-size:12px;\">Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>'
 }
 
 function cleanPrintOptionValue (type, value) {
@@ -116,6 +118,7 @@ export default async function printUrlToPdf (
       returnByValue: true,
     })
 
+
     // setting the viewport to the size of the page will force
     // any lazy-loaded images to load
     await Emulation.setDeviceMetricsOverride({
@@ -140,9 +143,54 @@ export default async function printUrlToPdf (
       }
 
       load()
-    })
 
+    })
+    
+
+    function demoWait() {
+      setTimeout(() => {
+        const adata = window.ADATA_READY;
+        return { adata }
+      }, 3500);
+    }
+
+    Cdp(async (client) => {
+      const {Runtime} = client;
+      try {
+          // will add div
+          let adata = await Runtime.evaluate({
+              expression: `(${demoWait})()`,
+              // returnByValue: true
+          });
+          log(`soo, adata= ${JSON.stringify(adata)}`);
+          console.log('OK');
+
+      } catch (err) {
+          console.error(err);
+      } finally {
+          client.close();
+      }
+  }).on('error', (err) => {
+      console.error(err);
+  });
+
+    // const {
+    //   result: {
+    //     value: { adata2 }
+    //   }
+    // } = await Runtime.evaluate({
+    //   expression: `(
+    //     setTimeout(() => {
+    //       let adata2 = window.ADATA_READY
+    //       return adata2;
+    //       }, 3500);
+    //   )();
+    //   `,
+    //   returnByValue: true,
+    // })
+    // log(`soo, adata= ${adata2}`);
     log('We think the page has finished loading. Printing PDF.')
+    // console.log(`help me printOptions: ${printOptions}`);
     const pdf = await Page.printToPDF(printOptions)
     result = pdf.data
   } catch (error) {

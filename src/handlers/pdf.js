@@ -1,35 +1,38 @@
-//
-//
-// HEY! Be sure to re-incorporate changes from @albinekb
-// https://github.com/adieuadieu/serverless-chrome/commit/fca8328134f1098adf92e115f69002e69df24238
-//
-//
-//
 import log from '../utils/log'
-import pdf, { makePrintOptions } from '../chrome/pdf'
+import pdf from '../chrome/pdf'
 
 export default async function handler (event, context, callback) {
-  const queryStringParameters = event.queryStringParameters || {}
-  const {
-    url = 'https://github.com/adieuadieu/serverless-chrome',
-    ...printParameters
-  } = queryStringParameters
 
-  let printOptions = makePrintOptions(printParameters)
+  var printOptions = ["url", "landscape", "displayHeaderFooter", "displayHeaderFooter", "printBackground",
+                  "scale", "paperWidth","paperHeight","marginTop","marginBottom","marginLeft",
+                  "marginRight","headerTemplate", "footerTemplate",];
 
-  printOptions.landscape = (printParameters.landscape === 'true')
-  printOptions.ignoreInvalidPageRanges = (printParameters.ignoreInvalidPageRanges === 'true')
-  printOptions.printBackground = (printParameters.printBackground === 'true')
-  printOptions.displayHeaderFooter = (printParameters.displayHeaderFooter === 'true')
+  var printParameters = {};
+  for (var key in event.headers) {
+    if (event.headers.hasOwnProperty(key)) {
+        // log("key is " + key + ", value is" + event.headers[key]);
+        if (printOptions.includes(key)) {
+          if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
+            printParameters[key] = (event.headers[key]  === 'true');
+          } else if (["scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft", "marginRight"].includes(key)) {
+            printParameters[key] = Number(event.headers[key]);
+          } else {
+            printParameters[key] = event.headers[key];
+          }
+        }
+    }
+  }
+
+  console.log(`printParameters: ${JSON.stringify(printParameters)}`);
 
   let data
-  log('Processing PDFification for', url, printOptions)
+  log('Processing PDFification for', event.headers.url, printParameters)
   const startTime = Date.now()
 
   try {
-    data = await pdf(url, printOptions)
+    data = await pdf(event.headers.url, printParameters)
   } catch (error) {
-    console.error('Error printing pdf for', url, error)
+    console.error('Error printing pdf for', event.headers.url, error)
     return callback(error)
   }
   log(`Chromium took ${Date.now() - startTime}ms to load URL and render PDF.`)
