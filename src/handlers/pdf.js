@@ -5,12 +5,13 @@ export default async function handler (event, context, callback) {
 
   var printOptions = ["url", "landscape", "displayHeaderFooter", "displayHeaderFooter", "printBackground",
                   "scale", "paperWidth","paperHeight","marginTop","marginBottom","marginLeft",
-                  "marginRight","headerTemplate", "footerTemplate",];
+                  "marginRight","headerTemplate", "footerTemplate","X-User-Id", "X-User-Token", "X-User-SystemCode",
+                  "X-User-Metro"];
 
   var printParameters = {};
   for (var key in event.headers) {
     if (event.headers.hasOwnProperty(key)) {
-        // log("key is " + key + ", value is" + event.headers[key]);
+        log("key is " + key + ", value is" + event.headers[key]);
         if (printOptions.includes(key)) {
           if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
             printParameters[key] = (event.headers[key]  === 'true');

@@ -71,7 +71,28 @@ export default async function printUrlToPdf (
   const {
     Network, Page, Runtime, Emulation,
   } = client
+  
+  console.log(`x-user-id: ${printOptions['X-User-Id']}`);
+  Network.setUserAgentOverride({'userAgent': 'user agent'});
+  Network.setExtraHTTPHeaders({
+  'headers': 
+  {
+    'X-Requested-by': 'Extra User Agent',
+    'X-User-Id': printOptions['X-User-Id'],
+    'X-User-Token': printOptions['X-User-Token'],
+    'X-User-SystemCode': printOptions['X-User-SystemCode'],
+    'X-User-Metro': printOptions['X-User-Metro']
+  }
+});
 
+
+  // Network.setExtraHTTPHeaders({
+  //   'X-Requested-by': 'Extra User Agent',
+  //   'X-User-Id': printOptions['X-User-Id'],
+  //   'X-User-Token': printOptions['X-User-Token'],
+  //   'X-User-SystemCode': printOptions['X-User-SystemCode'],
+  //   'X-User-Metro': printOptions['X-User-Metro']
+  // });
   Network.requestWillBeSent((data) => {
     // only add requestIds which aren't already in the queue
     // why? if a request to http gets redirected to https, requestId remains the same
@@ -97,8 +118,9 @@ export default async function printUrlToPdf (
 
   try {
     await Promise.all([Network.enable(), Page.enable()])
-
-    await Page.navigate({ url })
+    console.log(`url: ${url}`);
+    const pageNavigator = await Page.navigate({ url })
+    console.log(pageNavigator);
 
     await Page.loadEventFired()
 

@@ -12,4 +12,8 @@ curl -X POST \
   -H 'paperWidth: 8' \
   -H 'printBackground: true' \
   -H 'scale: 1' \
+  -H 'X-User-Id: 55507' \
+  -H 'X-User-Token: 9030ffb6-4f28-4b7d-8e96-d57bc1d25ee0' \
+  -H 'X-User-SystemCode: W4240241236' \
+  -H 'X-User-Metro: tx-ho' \
   -H 'url: http://www.apartmentdata.io/dashboard/tx-ho/change-report' > tmp.pdf
