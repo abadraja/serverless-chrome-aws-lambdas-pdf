@@ -8,7 +8,18 @@ export default async function handler (event, context, callback) {
                   "marginRight","headerTemplate", "footerTemplate","X-User-Id", "X-User-Token", "X-User-SystemCode",
                   "X-User-Metro"];
 
+  console.log(`real event: ${JSON.stringify(event)}`);                
+  let text;
+  // console.log(`buffer to json: ${JSON.stringify(new Buffer(event.body, 'base64'))}`);
+  // // console.log(`event: ${new Buffer(event.body, 'base64').toString()}`);
+  // console.log(`event: ${JSON.parse(new Buffer(event.body, 'base64').toString()['html-code'])}`);
+  // console.log(`event: ${new Buffer(event.body, 'base64')['html-code']}`);
   var printParameters = {};
+  if (event.body) {
+    text = new Buffer(event.body, 'base64').toString();
+    console.log(`textbig: ${text}`);  
+    printParameters['html-code'] = text;
+  }
   for (var key in event.headers) {
     if (event.headers.hasOwnProperty(key)) {
         log("key is " + key + ", value is" + event.headers[key]);
@@ -20,7 +31,7 @@ export default async function handler (event, context, callback) {
           } else {
             printParameters[key] = event.headers[key];
           }
-        }
+        } else { log(`${key}key, with value ${event.headers[key]}`, printOptions.includes(key)); }
     }
   }
 

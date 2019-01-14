@@ -1,10 +1,3 @@
-//
-//
-// HEY! Be sure to re-incorporate changes from @albinekb
-// https://github.com/adieuadieu/serverless-chrome/commit/fca8328134f1098adf92e115f69002e69df24238
-//
-//
-//
 import Cdp from 'chrome-remote-interface'
 import log from '../utils/log'
 import sleep from '../utils/sleep'
@@ -118,8 +111,20 @@ export default async function printUrlToPdf (
 
   try {
     await Promise.all([Network.enable(), Page.enable()])
-    console.log(`url: ${url}`);
+    console.log(`url: ${url}`, url == undefined);
+    console.log(`printOptions['html-code']: ${printOptions['html-code']}`, typeof printOptions['html-code']);
+
+    // let pageNavigator;
+    if (url == undefined) {
+    //   pageNavigator = await Page.navigate({ url: 'about:blank' })      
+      url = 'http://www.apartmentdata.io/dashboard/tx-ho/change-report';
+    } 
     const pageNavigator = await Page.navigate({ url })
+  
+
+    //            const {frameId} = await Page.navigate({url: 'about:blank'});
+    //           const html = '<p>It works!</p>';
+    //           await Page.setDocumentContent({frameId, html});
     console.log(pageNavigator);
 
     await Page.loadEventFired()
@@ -175,23 +180,31 @@ export default async function printUrlToPdf (
         return { adata }
       }, 3500);
     }
-
+    
     Cdp(async (client) => {
       const {Runtime} = client;
       try {
-          // will add div
-          let adata = await Runtime.evaluate({
-              expression: `(${demoWait})()`,
-              // returnByValue: true
-          });
-          log(`soo, adata= ${JSON.stringify(adata)}`);
-          console.log('OK');
+        // will add div
+              console.log(url == undefined, url);
+              console.log('im here');
+              const {frameId} = pageNavigator;
+              const html = printOptions['html-code'];
+              console.log('html', html, typeof html);              
+              await Page.setDocumentContent({frameId, html});
 
-      } catch (err) {
-          console.error(err);
-      } finally {
-          client.close();
-      }
+            let adata = await Runtime.evaluate({
+                expression: `(${demoWait})()`,
+                // returnByValue: true
+            });
+            log(`soo, adata= ${JSON.stringify(adata)}`);
+            console.log('OK');
+
+        } catch (err) {
+            console.error(err);
+        } finally {
+            client.close();
+        }
+      
   }).on('error', (err) => {
       console.error(err);
   });
