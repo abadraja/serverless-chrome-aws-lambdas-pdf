@@ -1,14 +1,15 @@
 import log from '../utils/log'
 import pdf from '../chrome/pdf'
 
-export default async function handler (event, context, callback) {
+export default async function handler(event, context, callback) {
 
   var printOptions = ["url", "landscape", "displayHeaderFooter", "displayHeaderFooter", "printBackground",
-                  "scale", "paperWidth","paperHeight","marginTop","marginBottom","marginLeft",
-                  "marginRight","headerTemplate", "footerTemplate","X-User-Id", "X-User-Token", "X-User-SystemCode",
-                  "X-User-Metro"];
+    "scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft",
+    "marginRight", "headerTemplate", "footerTemplate", "X-User-Id", "X-User-Token", "X-User-SystemCode",
+    "X-User-Metro"
+  ];
 
-  console.log(`real event: ${JSON.stringify(event)}`);                
+  console.log(`real event: ${JSON.stringify(event)}`);
   let text;
   // console.log(`buffer to json: ${JSON.stringify(new Buffer(event.body, 'base64'))}`);
   // // console.log(`event: ${new Buffer(event.body, 'base64').toString()}`);
@@ -17,21 +18,27 @@ export default async function handler (event, context, callback) {
   var printParameters = {};
   if (event.body) {
     text = new Buffer(event.body, 'base64').toString();
-    console.log(`textbig: ${text}`);  
+    console.log(`textbig: ${text}`);
     printParameters['html-code'] = text;
+  }
+  if (!printParameters['html-code'] && !event.headers['url']) {
+    console.log('fek it');
+    return new Error(`html-code or url passed incorrectly or absent`);
   }
   for (var key in event.headers) {
     if (event.headers.hasOwnProperty(key)) {
-        log("key is " + key + ", value is" + event.headers[key]);
-        if (printOptions.includes(key)) {
-          if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
-            printParameters[key] = (event.headers[key]  === 'true');
-          } else if (["scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft", "marginRight"].includes(key)) {
-            printParameters[key] = Number(event.headers[key]);
-          } else {
-            printParameters[key] = event.headers[key];
-          }
-        } else { log(`${key}key, with value ${event.headers[key]}`, printOptions.includes(key)); }
+      log("key is " + key + ", value is" + event.headers[key]);
+      if (printOptions.includes(key)) {
+        if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
+          printParameters[key] = (event.headers[key] === 'true');
+        } else if (["scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft", "marginRight"].includes(key)) {
+          printParameters[key] = Number(event.headers[key]);
+        } else {
+          printParameters[key] = event.headers[key];
+        }
+      } else {
+        log(`${key}key, with value ${event.headers[key]}`, printOptions.includes(key));
+      }
     }
   }
 

@@ -47,6 +47,7 @@
     "aws-api-gateway-client": "^0.2.16",
     "chrome-launcher": "^0.10.5",
     "chrome-remote-interface": "0.25.3",
+    "chromeless": "^1.5.2",
     "request": "^2.88.0",
     "util": "^0.11.1"
   },

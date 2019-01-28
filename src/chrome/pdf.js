@@ -1,4 +1,4 @@
-import Cdp from 'chrome-remote-interface'
+import CDP from 'chrome-remote-interface'
 import log from '../utils/log'
 import sleep from '../utils/sleep'
 
@@ -7,8 +7,8 @@ const defaultPrintOptions = {
   displayHeaderFooter: false,
   printBackground: true,
   scale: 1,
-  paperWidth: 8.27, 
-  paperHeight: 11.69, 
+  paperWidth: 8.27,
+  paperHeight: 11.69,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -18,12 +18,16 @@ const defaultPrintOptions = {
   footerTemplate: '<div class=\"page-footer\" style=\"width:100%; text-align:right; font-size:12px;\">Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>'
 }
 
-function cleanPrintOptionValue (type, value) {
-  const types = { string: String, number: Number, boolean: Boolean }
+function cleanPrintOptionValue(type, value) {
+  const types = {
+    string: String,
+    number: Number,
+    boolean: Boolean
+  }
   return types[type](value)
 }
 
-export function makePrintOptions (options = {}) {
+export function makePrintOptions(options = {}) {
   return Object.entries(options).reduce(
     (printOptions, [option, value]) => ({
       ...printOptions,
@@ -36,203 +40,100 @@ export function makePrintOptions (options = {}) {
   )
 }
 
-export default async function printUrlToPdf (
+export default async function printUrlToPdf(
   url,
   printOptions = {},
   mobile = false
 ) {
-  const LOAD_TIMEOUT = process.env.PAGE_LOAD_TIMEOUT || 1000 * 20
-  let result
-
-  // @TODO: write a better queue, which waits a few seconds when reaching 0
-  // before emitting "empty". Also see other handlers.
-  const requestQueue = []
-
-  const emptyQueue = async () => {
-    await sleep(1000)
-
-    log('Request queue size:', requestQueue.length, requestQueue)
-
-    if (requestQueue.length > 0) {
-      await emptyQueue()
-    }
-  }
-
-  const tab = await Cdp.New()
-  const client = await Cdp({ host: '127.0.0.1', target: tab })
-
-  const {
-    Network, Page, Runtime, Emulation,
-  } = client
-  
-  console.log(`x-user-id: ${printOptions['X-User-Id']}`);
-  Network.setUserAgentOverride({'userAgent': 'user agent'});
-  Network.setExtraHTTPHeaders({
-  'headers': 
-  {
-    'X-Requested-by': 'Extra User Agent',
-    'X-User-Id': printOptions['X-User-Id'],
-    'X-User-Token': printOptions['X-User-Token'],
-    'X-User-SystemCode': printOptions['X-User-SystemCode'],
-    'X-User-Metro': printOptions['X-User-Metro']
-  }
-});
-
-
-  // Network.setExtraHTTPHeaders({
-  //   'X-Requested-by': 'Extra User Agent',
-  //   'X-User-Id': printOptions['X-User-Id'],
-  //   'X-User-Token': printOptions['X-User-Token'],
-  //   'X-User-SystemCode': printOptions['X-User-SystemCode'],
-  //   'X-User-Metro': printOptions['X-User-Metro']
-  // });
-  Network.requestWillBeSent((data) => {
-    // only add requestIds which aren't already in the queue
-    // why? if a request to http gets redirected to https, requestId remains the same
-    if (!requestQueue.find(item => item === data.requestId)) {
-      requestQueue.push(data.requestId)
-    }
-
-    log('Chrome is sending request for:', data.requestId, data.request.url)
-  })
-
-  Network.responseReceived(async (data) => {
-    // @TODO: handle this better. sometimes images, fonts,
-    // etc aren't done loading before we think loading is finished
-    // is there a better way to detect this? see if there's any pending
-    // js being executed? paints? something?
-    await sleep(100) // wait here, in case this resource has triggered more resources to load.
-    requestQueue.splice(
-      requestQueue.findIndex(item => item === data.requestId),
-      1
-    )
-    log('Chrome received response for:', data.requestId, data.response.url)
-  })
-
+  let client;
+  let result;
   try {
+
+    client = await CDP();
+
+    const {
+      Network,
+      Page
+    } = client
+
+    // console.log(`x-user-id: ${printOptions['X-User-Id']}`);
+    // Network.setUserAgentOverride({
+    //   'userAgent': 'user agent'
+    // });
+    // Network.setExtraHTTPHeaders({
+    //   'headers': {
+    //     'X-Requested-by': 'Extra User Agent',
+    //     'X-User-Id': printOptions['X-User-Id'],
+    //     'X-User-Token': printOptions['X-User-Token'],
+    //     'X-User-SystemCode': printOptions['X-User-SystemCode'],
+    //     'X-User-Metro': printOptions['X-User-Metro']
+    //   }
+    // });
+
+    Network.requestWillBeSent((data) => {
+
+      if (!requestQueue.find(item => item === data.requestId)) {
+        requestQueue.push(data.requestId)
+      }
+
+      log('Chrome is sending request for:', data.requestId, data.request.url)
+    })
+
+    Network.responseReceived(async (data) => {
+      // @TODO: handle this better. sometimes images, fonts,
+      // etc aren't done loading before we think loading is finished
+      // is there a better way to detect this? see if there's any pending
+      // js being executed? paints? something?
+      await sleep(100) // wait here, in case this resource has triggered more resources to load.
+      requestQueue.splice(
+        requestQueue.findIndex(item => item === data.requestId),
+        1
+      )
+      log('Chrome received response for:', data.requestId, data.response.url)
+    })
+
+
     await Promise.all([Network.enable(), Page.enable()])
     console.log(`url: ${url}`, url == undefined);
     console.log(`printOptions['html-code']: ${printOptions['html-code']}`, typeof printOptions['html-code']);
 
-    // let pageNavigator;
+    let pageNavigator;
     if (url == undefined) {
-    //   pageNavigator = await Page.navigate({ url: 'about:blank' })      
-      url = 'http://www.apartmentdata.io/dashboard/tx-ho/change-report';
-    } 
-    const pageNavigator = await Page.navigate({ url })
-  
+      // pageNavigator = await Page.navigate({
+      //   url: 'about:blank'
+      // })
+      url = 'about:blank';
+    }
+    pageNavigator = await Page.navigate({
+      url
+    })
 
-    //            const {frameId} = await Page.navigate({url: 'about:blank'});
-    //           const html = '<p>It works!</p>';
-    //           await Page.setDocumentContent({frameId, html});
     console.log(pageNavigator);
 
     await Page.loadEventFired()
 
     const {
-      result: {
-        value: { height },
-      },
-    } = await Runtime.evaluate({
-      expression: `(
-        () => {
-          const height = document.body.scrollHeight
-          window.scrollTo(0, height)
-          return { height }
-        }
-      )();
-      `,
-      returnByValue: true,
-    })
+      frameId
+    } = pageNavigator;
+    const html = printOptions['html-code'];
+    console.log('html', html, typeof html);
+    // if (html) {
+    await Page.setDocumentContent({
+      frameId,
+      html
+    });
 
 
-    // setting the viewport to the size of the page will force
-    // any lazy-loaded images to load
-    await Emulation.setDeviceMetricsOverride({
-      mobile: !!mobile,
-      deviceScaleFactor: 0,
-      scale: 1, // mobile ? 2 : 1,
-      width: mobile ? 375 : 1280,
-      height,
-    })
-
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(
-        reject,
-        LOAD_TIMEOUT,
-        new Error(`Page load timed out after ${LOAD_TIMEOUT} ms.`)
-      )
-
-      const load = async () => {
-        await emptyQueue()
-        clearTimeout(timeout)
-        resolve()
-      }
-
-      load()
-
-    })
-    
-
-    function demoWait() {
-      setTimeout(() => {
-        const adata = window.ADATA_READY;
-        return { adata }
-      }, 3500);
-    }
-    
-    Cdp(async (client) => {
-      const {Runtime} = client;
-      try {
-        // will add div
-              console.log(url == undefined, url);
-              console.log('im here');
-              const {frameId} = pageNavigator;
-              const html = printOptions['html-code'];
-              console.log('html', html, typeof html);              
-              await Page.setDocumentContent({frameId, html});
-
-            let adata = await Runtime.evaluate({
-                expression: `(${demoWait})()`,
-                // returnByValue: true
-            });
-            log(`soo, adata= ${JSON.stringify(adata)}`);
-            console.log('OK');
-
-        } catch (err) {
-            console.error(err);
-        } finally {
-            client.close();
-        }
-      
-  }).on('error', (err) => {
-      console.error(err);
-  });
-
-    // const {
-    //   result: {
-    //     value: { adata2 }
-    //   }
-    // } = await Runtime.evaluate({
-    //   expression: `(
-    //     setTimeout(() => {
-    //       let adata2 = window.ADATA_READY
-    //       return adata2;
-    //       }, 3500);
-    //   )();
-    //   `,
-    //   returnByValue: true,
-    // })
-    // log(`soo, adata= ${adata2}`);
-    log('We think the page has finished loading. Printing PDF.')
-    // console.log(`help me printOptions: ${printOptions}`);
     const pdf = await Page.printToPDF(printOptions)
     result = pdf.data
   } catch (error) {
     console.error(error)
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 
-  await client.close()
 
   return result
 }

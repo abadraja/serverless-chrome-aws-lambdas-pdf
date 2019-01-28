@@ -1,0 +1,8 @@
+mesg: ttyname failed: Inappropriate ioctl for device
+
+(nautilus:17288): Gtk-WARNING **: Failed to register client: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gnome.SessionManager was not provided by any .service files
+Gtk-Message: GtkDialog mapped without a transient parent. This is discouraged.
+
+** (nautilus:17288): CRITICAL **: Another desktop manager in use; desktop window won't be created
+
+** (nautilus:17288): WARNING **: Couldn't save the desktop metadata keyfile to disk: Failed to create file '/root/.config/nautilus/desktop-metadata.9RSAWZ': No such file or directory
