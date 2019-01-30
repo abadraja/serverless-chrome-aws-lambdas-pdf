@@ -47,28 +47,41 @@ export default async function printUrlToPdf(
 ) {
   let client;
   let result;
+  const requestQueue = [];
   try {
 
     client = await CDP();
 
     const {
       Network,
-      Page
+      Page,
+      Runtime,
+      Emulation
     } = client
 
+    const LOAD_TIMEOUT = process.env.PAGE_LOAD_TIMEOUT || 1000 * 20
+    const emptyQueue = async () => {
+      await sleep(500)
+
+      log('Request queue size:', requestQueue.length, requestQueue)
+
+      if (requestQueue.length > 0) {
+        await emptyQueue()
+      }
+    }
     // console.log(`x-user-id: ${printOptions['X-User-Id']}`);
     // Network.setUserAgentOverride({
     //   'userAgent': 'user agent'
     // });
-    // Network.setExtraHTTPHeaders({
-    //   'headers': {
-    //     'X-Requested-by': 'Extra User Agent',
-    //     'X-User-Id': printOptions['X-User-Id'],
-    //     'X-User-Token': printOptions['X-User-Token'],
-    //     'X-User-SystemCode': printOptions['X-User-SystemCode'],
-    //     'X-User-Metro': printOptions['X-User-Metro']
-    //   }
-    // });
+    Network.setExtraHTTPHeaders({
+      'headers': {
+        'X-Requested-by': 'Extra User Agent',
+        'x-user-id': printOptions['x-user-id'],
+        'x-user-token': printOptions['x-user-token'],
+        'x-user-systemcode': printOptions['x-user-systemcode'],
+        'x-user-metro': printOptions['x-user-metro']
+      }
+    });
 
     Network.requestWillBeSent((data) => {
 
@@ -92,10 +105,10 @@ export default async function printUrlToPdf(
       log('Chrome received response for:', data.requestId, data.response.url)
     })
 
-
     await Promise.all([Network.enable(), Page.enable()])
     console.log(`url: ${url}`, url == undefined);
     console.log(`printOptions['html-code']: ${printOptions['html-code']}`, typeof printOptions['html-code']);
+    console.log(`printOptions ==: ${JSON.stringify(printOptions)}`);
 
     let pageNavigator;
     if (url == undefined) {
@@ -117,13 +130,53 @@ export default async function printUrlToPdf(
     } = pageNavigator;
     const html = printOptions['html-code'];
     console.log('html', html, typeof html);
-    // if (html) {
+    console.log(`d1`);
+
+    // await Page.setDocumentContent({
+    //   frameId,
+    //   html
+    // });
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        reject,
+        LOAD_TIMEOUT,
+        new Error(`Page load timed out after ${LOAD_TIMEOUT} ms.`)
+      )
+
+      const load = async () => {
+        await emptyQueue()
+        clearTimeout(timeout)
+        resolve()
+      }
+
+      load()
+    })
+    await sleep(2000);
+    console.log(`d2`);
+
+    function demoWait() {
+      setTimeout(() => {
+        const adata = window.ADATA_READY;
+        return {
+          adata
+        }
+      }, 3500);
+    }
+
+    console.log('html', html, typeof html);
+    console.log('frameId', frameId);
+
     await Page.setDocumentContent({
       frameId,
       html
     });
-
-
+    console.log(`feek it`);
+    let adata = await Runtime.evaluate({
+      expression: `(${demoWait})()`,
+    });
+    log(`soo, adata= ${JSON.stringify(adata)}`);
+    console.log('OK');
+    await sleep(1500)
     const pdf = await Page.printToPDF(printOptions)
     result = pdf.data
   } catch (error) {
