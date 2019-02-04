@@ -4,3 +4,4 @@ node_modules/*
 .serverless/*
 src/trigger.sh
 ./src/trigger.sh
+src/trigger.*

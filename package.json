@@ -48,6 +48,7 @@
     "chrome-launcher": "^0.10.5",
     "chrome-remote-interface": "0.25.3",
     "chromeless": "^1.5.2",
+    "puppeteer": "^1.12.1",
     "request": "^2.88.0",
     "util": "^0.11.1"
   },

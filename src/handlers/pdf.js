@@ -16,16 +16,24 @@ export default async function handler(event, context, callback) {
   // console.log(`event: ${JSON.parse(new Buffer(event.body, 'base64').toString()['html-code'])}`);
   // console.log(`event: ${new Buffer(event.body, 'base64')['html-code']}`);
   var printParameters = {};
+  let url = event.headers.url;
+  printParameters['printBackground'] = true;
+  try {
+    // console.log(`decoded: ${decodeURIComponent(url)}`);
+    url = decodeURIComponent(url);
+  } catch (err) {
+    console.error(err);
+  }
   if (event.body) {
     text = new Buffer(event.body, 'base64').toString();
 
     // console.log(`textbig: ${text}`);
     // printParameters['html-code'] = text;
-    console.log(`decoded: ${decodeURIComponent(text)}`);
+    // console.log(`decoded: ${decodeURIComponent(text)}`);
     printParameters['html-code'] = decodeURIComponent(text);
 
   }
-  if (!printParameters['html-code'] && !event.headers['url']) {
+  if (!printParameters['html-code'] && !url) {
     console.log('fek it');
     return new Error(`html-code or url passed incorrectly or absent`);
   }
@@ -49,16 +57,16 @@ export default async function handler(event, context, callback) {
     }
   }
 
-  console.log(`printParameters: ${JSON.stringify(printParameters)}`);
+  // console.log(`printParameters: ${JSON.stringify(printParameters)}`);
 
   let data
-  log('Processing PDFification for', event.headers.url, printParameters)
+  log('Processing PDFification for', url, printParameters)
   const startTime = Date.now()
 
   try {
-    data = await pdf(event.headers.url, printParameters)
+    data = await pdf(url, printParameters)
   } catch (error) {
-    console.error('Error printing pdf for', event.headers.url, error)
+    console.error('Error printing pdf for', url, error)
     return callback(error)
   }
   log(`Chromium took ${Date.now() - startTime}ms to load URL and render PDF.`)
