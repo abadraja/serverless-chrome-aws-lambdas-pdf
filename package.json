@@ -13,13 +13,9 @@
     "chromium_channel": "dev"
   },
   "scripts": {
-    "test": "npm run lint && npm run ava",
-    "watch:test": "ava --watch",
-    "ava": "ava",
-    "lint": "npm run lint:eslint -s",
-    "lint:eslint": "eslint $npm_package_config_jsSrc",
-    "deploy": "serverless deploy -v",
-    "upgrade-dependencies": "yarn upgrade-interactive --latest --exact"
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "test": "bash src/example_trigger.sh"
   },
   "repository": {
     "type": "git",

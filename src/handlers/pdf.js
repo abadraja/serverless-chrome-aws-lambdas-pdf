@@ -1,5 +1,4 @@
 import log from '../utils/log'
-import pdf from '../chrome/pdf'
 const AWS = require('aws-sdk');
 require('dotenv').config()
 
