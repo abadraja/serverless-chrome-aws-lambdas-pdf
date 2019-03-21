@@ -9,21 +9,27 @@ export default async function handler(event, context, callback) {
     "marginright", "headertemplate", "footertemplate", "x-user-id", "x-user-token", "x-user-systemcode",
     "x-user-metro", "filename"
   ];
+  log(`event: ${JSON.stringify(event)}`);
 
   let printParameters = {};
   // Get the url from header
   let url = event.headers.url;
   printParameters['printBackground'] = true;
+  log(`url: ${url}`);
+
+  if (!url) {
+    return new Error(`url passed incorrectly or absent`);
+  }
 
   try {
     // Decoding the url
+    log(`url: ${url}`);
+
     url = decodeURIComponent(url);
+    log(`url: ${url}`);
+
   } catch (err) {
     console.error(err);
-  }
-
-  if (!url) {
-    return new Error(`html-code or url passed incorrectly or absent`);
   }
 
   // Sort out the needed print options
@@ -45,7 +51,9 @@ export default async function handler(event, context, callback) {
 
   // Call Lambda here: 
   let lambda = new AWS.Lambda();
-
+  log(`url: ${url}`);
+  printParameters['url'] = url;
+  log(`printParams: ${JSON.stringify(printParameters)}`);
   let buf = Buffer.from(JSON.stringify(printParameters));
 
   let params = {
