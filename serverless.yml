@@ -7,8 +7,17 @@ provider:
   region: us-east-1
   environment:
     # DEBUG: "*"
-    PAGE_LOAD_TIMEOUT: 20000
+    PAGE_LOAD_TIMEOUT: 30000
     LOGGING: true
+    HOME: /var/task
+
+lambdaIamRoleStatements:
+  - Effect: "Allow"
+    Action:
+      - s3:ListBucket
+      - s3:PutObject
+      - lambda:InvokeFunction
+    Resource: "arn:aws:lambda:us-east-1:375390107146:function:aws2-dev-pdf"
 
 plugins:
   - serverless-plugin-chrome
@@ -19,41 +28,14 @@ custom:
     flags:
       - --window-size=1280,1696 # Letter size
       - --hide-scrollbars
+  stage: dev
+  dev-region: us-east-1
+  dev-accountid: 375390107146
 
 functions:
-  version-info:
-    description: Headless Chrome Serverless-framework version info example
-    memorySize: 1024
-    timeout: 30
-    handler: src/handlers/version.default
-    events:
-      - http:
-          path: version-info
-          method: get
-
-  request-logger:
-    description: Headless Chrome Serverless-framework request logging example
-    memorySize: 1024
-    timeout: 30
-    handler: src/handlers/requestLogger.default
-    events:
-      - http:
-          path: request-logger
-          method: get
-
-  screenshot:
-    description: Headless Chrome Serverless-framework screenshot example
-    memorySize: 1536
-    timeout: 30
-    handler: src/handlers/screenshot.default
-    events:
-      - http:
-          path: screenshot
-          method: get
-
   pdf:
     description: Headless Chrome Serverless-framework PDF example
-    memorySize: 1536
+    memorySize: 512
     timeout: 60
     handler: src/handlers/pdf.default
     events:
@@ -66,8 +48,8 @@ functions:
 
   magic:
     description: Custom function for magic purposes
-    memorySize: 1536
-    timeout: 30
+    memorySize: 3008
+    timeout: 60
     handler: src/handlers/custom-page.default
     events:
       - http:
@@ -80,12 +62,166 @@ resources:
       Properties:
         BinaryMediaTypes:
           - "*/*"
-    # Enable X-Ray tracing on Lambda functions
-    # ScreenshotLambdaFunction:
+    ServerlessDeploymentBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: pdf-cluster-lambda-store-1
+        LifecycleConfiguration:
+          Rules:
+            - ExpirationInDays: "1"
+              Status: Enabled
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: "ServerlessDeploymentBucket"
+        PolicyDocument:
+          Statement:
+            - Sid: "Expire after 1 day"
+              Action:
+                - "s3:GetObject"
+              Effect: "Allow"
+              Resource:
+                Fn::Join:
+                  - ""
+                  - - "arn:aws:s3:::"
+                    - Ref: "ServerlessDeploymentBucket"
+                    - "/*"
+              Principal: "*"
+              # Condition:
+              #   StringLike:
+              #     aws:Referer:
+              #       - "http://www.example.com/*"
+              #       - "http://example.com/*"
+    # ===============================================???
+    # SnsQueuePolicy:
+    #   Type: AWS::SQS::QueuePolicy
     #   Properties:
-    #     TracingConfig:
-    #       Mode: Active
-    # PdfLambdaFunction:
+    #     PolicyDocument:
+    #       Version: "2012-10-17"
+    #       Statement:
+    #         - Effect: Allow
+    #           Principal: "*"
+    #           Action:
+    #             - "sqs:SendMessage"
+    #             - "sqs:ReceiveMessage"
+    #             - "sqs:DeleteMessage"
+    #             - "sqs:GetQueueAttributes"
+    #             - "sqs:GetQueueUrl"
+    #           Resource: "*"
+    #           # Condition:
+    #           # ArnEquals:
+    #           #   "aws:SourceArn": ${self:custom.sns.arn}
+    #     Queues:
+    #       - Ref: SQSQueue
+    # SQSQueue:
+    #   Type: AWS::SQS::Queue
     #   Properties:
-    #     TracingConfig:
-    #       Mode: Active
+    #     QueueName: AwesomeQ
+    #     ReceiveMessageWaitTimeSeconds: 20
+    #     VisibilityTimeout: 60
+    # APIGatewaySQSIAM:
+    #   Type: AWS::IAM::Role
+    #   Properties:
+    #     Path: /app/all/
+    #     RoleName: APIGSQSRole
+    #     AssumeRolePolicyDocument:
+    #       Version: "2012-10-17"
+    #       Statement:
+    #         - Effect: Allow
+    #           Principal:
+    #             Service:
+    #               - apigateway.amazonaws.com
+    #           Action: sts:AssumeRole
+    #     Policies:
+    #       - PolicyName: APIGATEWAYIAMAll
+    #         PolicyDocument:
+    #           Version: "2012-10-17"
+    #           Statement:
+    #             - Effect: Allow
+    #               Resource: "*"
+    #               Action:
+    #                 - logs:CreateLogGroup
+    #                 - logs:CreateLogStream
+    #                 - logs:PutLogEvents
+    #             - Effect: Allow
+    #               Resource:
+    #                 - "*"
+    #               Action:
+    #                 - "sqs:SendMessage"
+    # createAPIGateway:
+    #   Type: AWS::ApiGateway::Resource
+    #   Properties:
+    #     ParentId:
+    #       Fn::GetAtt:
+    #         - ApiGatewayRestApi
+    #         - RootResourceId
+    #     PathPart: createnotification
+    #     RestApiId:
+    #       Ref: ApiGatewayRestApi
+    # SQSAPIMethod:
+    #   Type: AWS::ApiGateway::Method
+    #   DependsOn: SQSQueue
+    #   Properties:
+    #     RestApiId:
+    #       Ref: ApiGatewayRestApi
+    #     ResourceId:
+    #       Ref: createAPIGateway
+    #     HttpMethod: "POST"
+    #     MethodResponses:
+    #       - StatusCode: "200"
+    #         ResponseParameters:
+    #           "method.response.header.Access-Control-Allow-Origin": true
+    #     AuthorizationType: "NONE"
+    #     Integration:
+    #       Type: AWS
+    #       Credentials:
+    #         Fn::GetAtt: ["APIGatewaySQSIAM", "Arn"]
+    #       RequestParameters:
+    #         "integration.request.querystring.Action": "'SendMessage'"
+    #         "integration.request.querystring.MessageAttribute.1.Value.DataType": "'String'"
+    #         "integration.request.querystring.MessageAttribute.1.Value.StringValue": "method.request.body.userid"
+    #         "integration.request.querystring.MessageAttribute.1.Name": "'userid'"
+    #         "integration.request.querystring.MessageBody": "method.request.body.message"
+    #       IntegrationHttpMethod: POST
+    #       RequestTemplates:
+    #         "application/json": "{statusCode:200}"
+    #       IntegrationResponses:
+    #         - StatusCode: "200"
+    #           ResponseParameters:
+    #             "method.response.header.Access-Control-Allow-Origin": "'*'"
+    #           ResponseTemplates:
+    #             "application/json": ""
+    #       Uri: arn:aws:apigateway:${self:custom.dev-region}:sqs:path//${self:custom.${self:custom.stage}-accountid}/AwesomeQ
+    # SQSAPIMethodMock:
+    #   Type: AWS::ApiGateway::Method
+    #   DependsOn: SQSQueue
+    #   Properties:
+    #     RestApiId:
+    #       Ref: ApiGatewayRestApi
+    #     ResourceId:
+    #       Ref: createAPIGateway
+    #     HttpMethod: "OPTIONS"
+    #     MethodResponses:
+    #       - StatusCode: "200"
+    #         ResponseParameters:
+    #           "method.response.header.Access-Control-Allow-Origin": true
+    #           "method.response.header.Access-Control-Allow-Headers": true
+    #           "method.response.header.Access-Control-Allow-Methods": true
+    #           "method.response.header.Access-Control-Allow-Credentials": true
+    #     AuthorizationType: "NONE"
+    #     Integration:
+    #       Type: MOCK
+    #       RequestTemplates:
+    #         "application/json": "{statusCode:200}"
+    #       Credentials:
+    #         Fn::GetAtt: ["APIGatewaySQSIAM", "Arn"]
+    #       IntegrationResponses:
+    #         - StatusCode: "200"
+    #           ResponseParameters:
+    #             "method.response.header.Access-Control-Allow-Origin": "'*'"
+    #             "method.response.header.Access-Control-Allow-Headers": "'Content-Type,x-api-token,authorizationtoken,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    #             "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
+    #             "method.response.header.Access-Control-Allow-Credentials": "'false'"
+    #           ResponseTemplates:
+    #             "application/json": ""

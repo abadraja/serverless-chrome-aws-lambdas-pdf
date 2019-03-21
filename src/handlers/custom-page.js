@@ -1,84 +1,158 @@
+import Cdp from 'chrome-remote-interface'
 import log from '../utils/log'
-import pdf from '../chrome/custom-page'
+import sleep from '../utils/sleep'
+const AWS = require('aws-sdk');
+require('dotenv').config()
 
 export default async function handler(event, context, callback) {
 
-  var printOptions = ["url", "landscape", "displayHeaderFooter", "displayHeaderFooter", "printBackground",
-    "scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft",
-    "marginRight", "headertemplate", "footertemplate", "x-user-id", "x-user-token", "x-user-systemcode",
-    "x-user-metro"
-  ];
+  log(`event: ${JSON.stringify(event)}`);
 
-  console.log(`real event: ${JSON.stringify(event)}`);
-  let text;
-  // console.log(`buffer to json: ${JSON.stringify(new Buffer(event.body, 'base64'))}`);
-  // // console.log(`event: ${new Buffer(event.body, 'base64').toString()}`);
-  // console.log(`event: ${JSON.parse(new Buffer(event.body, 'base64').toString()['html-code'])}`);
-  // console.log(`event: ${new Buffer(event.body, 'base64')['html-code']}`);
-  var printParameters = {};
-  let url = event.headers.url;
-  printParameters['printBackground'] = true;
-  try {
-    console.log(`decoded: ${decodeURIComponent(url)}`);
-    url = decodeURIComponent(url);
-  } catch (err) {
-    console.error(err);
-  }
-  if (event.body) {
-    text = new Buffer(event.body, 'base64').toString();
+  let url = event.url;
+  let printOptions = event;
 
-    // console.log(`textbig: ${text}`);
-    // printParameters['html-code'] = text;
-    console.log(`decoded: ${decodeURIComponent(text)}`);
-    printParameters['html-code'] = decodeURIComponent(text);
+  const requestQueue = []
 
-  }
-  if (!printParameters['html-code'] && !url) {
-    console.log('fek it');
-    return new Error(`html-code or url passed incorrectly or absent`);
-  }
+  const emptyQueue = async () => {
+    await sleep(1000)
 
-  for (var key in event.headers) {
-    if (event.headers.hasOwnProperty(key)) {
-      log("key is " + key + ", value is" + event.headers[key]);
-      if (printOptions.includes(key)) {
-        if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
-          printParameters[key] = (event.headers[key] === 'true');
-        } else if (["scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft", "marginRight"].includes(key)) {
-          printParameters[key] = Number(event.headers[key]);
-        } else if (["footertemplate", "headertemplate"].includes(key)) {
-          printParameters[key] = decodeURIComponent(event.headers[key]);
-        } else {
-          printParameters[key] = event.headers[key];
-        }
-      } else {
-        log(`${key}key, with value ${event.headers[key]}`, printOptions.includes(key));
-      }
+    log('Request queue size:', requestQueue.length, requestQueue)
+
+    if (requestQueue.length > 0) {
+      await emptyQueue()
     }
   }
 
-  console.log(`printParameters: ${JSON.stringify(printParameters)}`);
+  const tab = await Cdp.New()
+  const client = await Cdp({
+    host: '127.0.0.1',
+    target: tab
+  })
 
-  let data
-  log('Processing PDFification for', url, printParameters)
-  const startTime = Date.now()
+  const {
+    Network,
+    Page,
+    Runtime,
+    Emulation,
+  } = client
+
+  log(`printOptions: ${JSON.stringify(printOptions)}`);
+  Network.setUserAgentOverride({
+    'userAgent': 'user agent'
+  });
+  Network.setExtraHTTPHeaders({
+    'headers': {
+      'X-Requested-by': 'Extra User Agent',
+      'x-user-id': printOptions['x-user-id'],
+      'x-user-token': printOptions['x-user-token'],
+      'x-user-systemcode': printOptions['x-user-systemcode'],
+      'x-user-metro': printOptions['x-user-metro'],
+    }
+  });
+
+  Network.requestWillBeSent((data) => {
+    // only add requestIds which aren't already in the queue
+    // why? if a request to http gets redirected to https, requestId remains the same
+    if (!requestQueue.find(item => item === data.requestId)) {
+      requestQueue.push(data.requestId)
+    }
+
+    // log('Chrome is sending request for:', data.requestId, data.request.url)
+  })
+
+  await Network.responseReceived(async (data) => {
+    // @TODO: handle this better. sometimes images, fonts,
+    // etc aren't done loading before we think loading is finished
+    // is there a better way to detect this? see if there's any pending
+    // js being executed? paints? something?
+    await sleep(100) // wait here, in case this resource has triggered more resources to load.
+    requestQueue.splice(
+      requestQueue.findIndex(item => item === data.requestId),
+      1
+    )
+    // log('Chrome received response for:', data.requestId, data.response.url)
+  });
+
+  let pdf;
 
   try {
-    data = await pdf(url, printParameters)
-  } catch (error) {
-    console.error('Error printing pdf for', url, error)
-    return callback(error)
-  }
-  log(`Chromium took ${Date.now() - startTime}ms to load URL and render PDF.`)
+    await Promise.all([Network.enable(), Page.enable()])
+    if (url == 'undefined') {
+      url = 'about:blank';
+    }
+    await Page.navigate({
+      url
+    })
+    await Page.loadEventFired();
+    await sleep(4500)
+    // Wait for ADATA_READY
+    const {
+      result: {
+        value: {
+          adata,
+        },
+      },
+    } = await Runtime.evaluate({
+      expression: `(
+        () => {
+          const adata = window.ADATA_READY
+          return { adata }
+        }
+        )();
+        `,
+      returnByValue: true,
+    })
+    await log(`before print to pdf, adata: ${adata}`);
+    if (adata === true) {
+      await log(`Niiice, should work!`);
+    }
 
-  // TODO: handle cases where the response is > 10MB
-  // with saving to S3 or something since API Gateway has a body limit of 10MB
-  return callback(null, {
-    statusCode: 200,
-    body: data,
-    isBase64Encoded: true,
-    headers: {
-      'Content-Type': 'application/pdf',
-    },
-  })
+    pdf = await Page.printToPDF(printOptions)
+    await client.close()
+  } catch (error) {
+    console.error(error)
+  }
+
+  // =========== Start upload =============== //
+
+  // AWS PART
+  AWS.config.update({
+    accessKeyId: process.env.aws_access_key_id,
+    secretAccessKey: process.env.aws_secret_access_key
+  });
+  let s3 = new AWS.S3();
+  var buf = Buffer.from(pdf.data, 'base64');
+  let file_key = Date.now() + "_" + "tmp.pdf";
+  if (event.filename) {
+    file_key = event.filename;
+  }
+
+  let params = {
+    Bucket: 'pdf-cluster-lambda-store',
+    Key: file_key,
+    Body: buf,
+    ACL: 'public-read',
+    ContentType: 'application/pdf',
+  };
+
+  const uploading = async () => {
+    s3.upload(params, (err, data) => {
+      //handle error
+      if (err) {
+        console.log("Error", err);
+      }
+      //success
+      if (data) {
+        console.log("Uploaded in:", data.Location, `typeof: ${typeof data.Location}`);
+      }
+    });
+  }
+  await uploading().catch(err => {
+    console.log(err);
+  });
+  log(`after uploading`);
+  await sleep(4000);
+  // ================= End upload ==================== //
+
+  return pdf.data
 }

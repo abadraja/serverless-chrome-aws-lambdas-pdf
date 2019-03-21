@@ -45,10 +45,11 @@
   "homepage": "https://github.com/adieuadieu/serverless-chrome/tree/master/examples/serverless-framework/aws",
   "dependencies": {
     "aws-api-gateway-client": "^0.2.16",
+    "aws-sdk": "^2.413.0",
     "chrome-launcher": "^0.10.5",
     "chrome-remote-interface": "0.25.3",
     "chromeless": "^1.5.2",
-    "puppeteer": "^1.12.1",
+    "dotenv": "^6.2.0",
     "request": "^2.88.0",
     "util": "^0.11.1"
   },
@@ -78,7 +79,7 @@
         {
           "modules": "commonjs",
           "targets": {
-            "node": "6.10"
+            "node": "8.10"
           },
           "include": [
             "es7.object.values",
