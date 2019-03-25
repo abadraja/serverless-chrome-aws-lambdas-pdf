@@ -2,6 +2,8 @@ curl -X POST \
   https://kmk1g66zoj.execute-api.us-east-1.amazonaws.com/dev/pdf \
   -H 'displayHeaderFooter: true' \
   -H 'landscape: false' \
+  -H 'headertemplate: false' \
+  -H 'footertemplate: false' \
   -H 'marginBottom: 0.2' \
   -H 'marginLeft: 0.2' \
   -H 'marginRight: 0.2' \

@@ -12,7 +12,7 @@ See `serverless.yml`.
 
 ## To Deploy:
 
-- Edit `serverless.yml` and enter your `<account-id>`
+- Edit `serverless.yml` and enter your `<account-id>`, `<LAMBDANAME>` and `<BUCKETNAME>`
 - Make a `src/handlers/.env` file after `.env_sample` template
 - Run `npm run deploy`
 

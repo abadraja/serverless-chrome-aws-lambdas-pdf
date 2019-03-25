@@ -7,6 +7,16 @@ require('dotenv').config()
 export default async function handler(event, context, callback) {
 
   log(`event: ${JSON.stringify(event)}`);
+  event['headerTemplate'] = event['headertemplate'];
+  event['footerTemplate'] = event['footertemplate'];
+  event['displayHeaderFooter'] = event['displayheaderfooter'];
+  event['printBackground'] = event['printbackground'];
+  event['paperWidth'] = Number(event['paperwidth']);
+  event['paperHeight'] = Number(event['paperheight']);
+  event['marginBottom'] = Number(event['marginbottom']);
+  event['marginLeft'] = Number(event['marginleft']);
+  event['marginTop'] = Number(event['margintop']);
+  event['marginRight'] = Number(event['marginright']);
 
   let url = event.url;
   let printOptions = event;
@@ -120,15 +130,19 @@ export default async function handler(event, context, callback) {
     accessKeyId: process.env.aws_access_key_id,
     secretAccessKey: process.env.aws_secret_access_key
   });
+
   let s3 = new AWS.S3();
   var buf = Buffer.from(pdf.data, 'base64');
   let file_key = Date.now() + "_" + "tmp.pdf";
   if (event.filename) {
     file_key = event.filename;
   }
+  log(`accs_id: ${ process.env.aws_access_key_id }`);
+  log(`secretAccessKey: ${ process.env.aws_secret_access_key }`);
+  log(`Bucket: ${ process.env.BUCKETNAME }`);
 
   let params = {
-    Bucket: 'pdf-cluster-lambda-store',
+    Bucket: `${ process.env.BUCKETNAME || 'pdf-cluster-store' }`,
     Key: file_key,
     Body: buf,
     ACL: 'public-read',

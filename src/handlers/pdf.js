@@ -1,10 +1,9 @@
 import log from '../utils/log'
 const AWS = require('aws-sdk');
-require('dotenv').config()
 
 export default async function handler(event, context, callback) {
 
-  let printOptions = ["url", "landscape", "displayheaderfooter", "displayheaderfooter", "printbackground",
+  let printOptions = ["url", "landscape", "displayheaderfooter", "printbackground",
     "scale", "paperwidth", "paperheight", "margintop", "marginbottom", "marginleft",
     "marginright", "headertemplate", "footertemplate", "x-user-id", "x-user-token", "x-user-systemcode",
     "x-user-metro", "filename"
@@ -14,7 +13,7 @@ export default async function handler(event, context, callback) {
   let printParameters = {};
   // Get the url from header
   let url = event.headers.url;
-  printParameters['printBackground'] = true;
+  // printParameters['printBackground'] = true;
   log(`url: ${url}`);
 
   if (!url) {
@@ -36,7 +35,7 @@ export default async function handler(event, context, callback) {
   for (let key in event.headers) {
     if (event.headers.hasOwnProperty(key)) {
       if (printOptions.includes(key)) {
-        if (["landscape", "ignoreInvalidPageRanges", "printBackground", "displayHeaderFooter"].includes(key)) {
+        if (["landscape", "printbackground", "displayheaderfooter"].includes(key)) {
           printParameters[key] = (event.headers[key] === 'true');
         } else if (["scale", "paperWidth", "paperHeight", "marginTop", "marginBottom", "marginLeft", "marginRight"].includes(key)) {
           printParameters[key] = Number(event.headers[key]);
@@ -57,7 +56,7 @@ export default async function handler(event, context, callback) {
   let buf = Buffer.from(JSON.stringify(printParameters));
 
   let params = {
-    FunctionName: 'aws2-dev-magic',
+    FunctionName: `${process.env.LAMBDANAME}`,
     InvocationType: "Event",
     Payload: buf
   };
@@ -70,7 +69,7 @@ export default async function handler(event, context, callback) {
   });
 
   // Make param.key here:
-  let file_key = Date.now() + "_" + "tmp.pdf";
+  let file_key = Date.now() + ".pdf";
   if (event.headers.filename) {
     file_key = event.headers.filename;
   }
@@ -78,7 +77,7 @@ export default async function handler(event, context, callback) {
   // AWS PART
   return callback(null, {
     statusCode: 200,
-    body: `https://s3.amazonaws.com/pdf-cluster-lambda-store/${file_key}`,
+    body: `https://s3.amazonaws.com/${process.env.BUCKETNAME}/${file_key}`,
     headers: {
       'Content-Type': 'text/html',
     },

@@ -1,20 +1,22 @@
-service: aws2
+service: adata
 
 provider:
   name: aws
   runtime: nodejs8.10
-  stage: dev
+  stage: pdf-cluster
   region: us-east-1
   environment:
     # DEBUG: "*"
     PAGE_LOAD_TIMEOUT: 30000
     LOGGING: true
     HOME: /var/task
+    LAMBDANAME: adata-pdf-cluster-magic
+    BUCKETNAME: pdf-cluster-store
   iamRoleStatements: # Iam role for both lambdas
     - Effect: "Allow"
       Action:
         - lambda:InvokeFunction
-      Resource: "arn:aws:lambda:us-east-1:012345678910:*:*" #gives the access to invoke a lambda
+      Resource: "arn:aws:lambda:us-east-1:460254217273:*:*" #gives the access to invoke a lambda
     - Effect: "Allow"
       Action:
         - "*"
@@ -71,7 +73,7 @@ resources:
     S3Bucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: pdf-cluster-lambda-store
+        BucketName: pdf-cluster-store
         AccessControl: PublicRead # Makes the bucket public
         LifecycleConfiguration:
           Rules:
