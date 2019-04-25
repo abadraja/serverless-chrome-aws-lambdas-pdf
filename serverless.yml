@@ -3,14 +3,14 @@ service: adata
 provider:
   name: aws
   runtime: nodejs8.10
-  stage: production-pdf-cluster
+  stage: pdf-cluster
   region: us-east-1
   environment:
     # DEBUG: "*"
     PAGE_LOAD_TIMEOUT: 30000
     LOGGING: true
     HOME: /var/task
-    LAMBDANAME: production-pdf-cluster-magic
+    LAMBDANAME: adata-pdf-cluster-magic
     BUCKETNAME: ${self:custom.bucket-name}
   iamRoleStatements: # Iam role for both lambdas
     - Effect: "Allow"
@@ -38,7 +38,7 @@ custom:
       - --hide-scrollbars
   stage: dev
   dev-region: us-east-1
-  bucket-name: production-pdf-cluster-store
+  bucket-name: pdf-cluster-store
 
 functions:
   pdf:
