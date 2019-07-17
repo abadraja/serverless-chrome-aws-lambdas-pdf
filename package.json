@@ -43,7 +43,7 @@
     "aws-api-gateway-client": "^0.2.16",
     "aws-sdk": "^2.413.0",
     "chrome-launcher": "^0.10.5",
-    "chrome-remote-interface": "^0.27.1",
+    "chrome-remote-interface": "^0.27.2",
     "chromeless": "^1.5.2",
     "dotenv": "^6.2.0",
     "request": "^2.88.0",
