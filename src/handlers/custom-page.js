@@ -75,7 +75,7 @@ export default async function handler(event, context, callback) {
     // etc aren't done loading before we think loading is finished
     // is there a better way to detect this? see if there's any pending
     // js being executed? paints? something?
-    await sleep(100) // wait here, in case this resource has triggered more resources to load.
+    await sleep(600) // wait here, in case this resource has triggered more resources to load.
     requestQueue.splice(
       requestQueue.findIndex(item => item === data.requestId),
       1
