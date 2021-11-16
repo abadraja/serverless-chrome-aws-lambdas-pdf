@@ -41,7 +41,7 @@
   "homepage": "https://github.com/adieuadieu/serverless-chrome/tree/master/examples/serverless-framework/aws",
   "dependencies": {
     "aws-api-gateway-client": "^0.2.16",
-    "aws-sdk": "^2.413.0",
+    "aws-sdk": "^2.814.0",
     "chrome-launcher": "^0.10.5",
     "chrome-remote-interface": "^0.27.2",
     "chromeless": "^1.5.2",
